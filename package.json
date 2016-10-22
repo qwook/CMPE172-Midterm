@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/qwook/CMPE172-Midterm/issues"
   },
-  "homepage": "https://github.com/qwook/CMPE172-Midterm#readme"
+  "homepage": "https://github.com/qwook/CMPE172-Midterm#readme",
+  "dependencies": {
+    "csv": "^1.1.0"
+  }
 }

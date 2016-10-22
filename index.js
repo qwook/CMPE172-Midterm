@@ -4,6 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const repl = require('repl');
 
+const cvs_generator = require('./csv_generator.js');
+
+
 function getExchangeRates() {
   return new Promise((resolve, reject) => {
 
@@ -30,7 +33,7 @@ function cmdEval(cmd, context, filename, cb) {
 
   var command = args[0].toLowerCase();
 
-  if (command == "buy") {
+  if (command == "buy" || command == "sell") {
 
     getExchangeRates()
     .then((exchg) => {
@@ -40,6 +43,9 @@ function cmdEval(cmd, context, filename, cb) {
       if (typeof( amt ) !== "number") {
         throw "Invalid argument 1.";
       }
+
+      // for some reason coinbase is inconsistent with conversion rates
+      // ex: btc_to_usd !== 1/usd_to_btc
 
       var currency = args[2];
       if (currency && currency.toUpperCase() !== "btc") {
@@ -55,19 +61,21 @@ function cmdEval(cmd, context, filename, cb) {
       }
 
       orders.push({
-        type: "buy",
-        timestamp: (new Date()),
+        type: command,
+        timestamp: (new Date()).toString(),
         amt: amt,
-        currency: currency
+        currency: currency,
+        cvt_rate: conversion
       });
 
       var inverseConversion = (1/conversion).toFixed(2);
       var converted = amt * conversion;
+      var orderType = command.toUpperCase();
 
       if (currency === "BTC")
-        console.log(`Order to BUY ${amt} BTC queued.`);
+        console.log(`Order to ${orderType} ${amt} BTC queued.`);
       else
-        console.log(`Order to BUY ${amt} ${currency} worth of BTC queued @ ${inverseConversion} BTC/${currency} (${converted} BTC)`);
+        console.log(`Order to ${orderType} ${amt} ${currency} worth of BTC queued @ ${inverseConversion} BTC/${currency} (${converted} BTC)`);
 
       cb(null);
     }).catch((e) => {
@@ -75,14 +83,23 @@ function cmdEval(cmd, context, filename, cb) {
       cb(null);
     });
 
-  } else if (command == "sell") {
-
   } else if (command == "orders") {
 
-    console.log("=== CURRENT ORDERS ===");
-    for (var order of orders) {
-      console.log(`${order.timestamp.toString()} : ${order.type.toUpperCase()} ${order.amt} : UNFILLED`);
-    }
+    getExchangeRates()
+    .then((exchg) => {
+
+      console.log(`CURRENT BTC/USD: ${exchg.btc_to_usd}`);
+
+      console.log("=== CURRENT ORDERS ===");
+      for (var order of orders) {
+        console.log(`${order.timestamp} : ${order.type.toUpperCase()} ${order.amt} : UNFILLED`);
+      }
+
+      cvs_generator(orders);
+
+      cb(null);
+
+    });
 
   } else {
     console.log("No such command: " + command);
